@@ -2,7 +2,7 @@ from arpeggio import ParserPython, PTNodeVisitor, visit_parse_tree, Optional, No
 from arpeggio import RegExMatch as _
 from datetime import timedelta
 
-class UFOParser:
+class DurationParser:
 
     approximation_marks = ['~', '>', '<', 'around', 'approximately', 'approx.', 'approx', \
         'aprox.', 'aprox', 'appx.', 'appx', 'app.', 'app', 'apx.', 'apx', 'about', 'at least',\
@@ -21,7 +21,7 @@ class UFOParser:
         if data is None:
             return data
         if __class__.__parser is None:
-            __class__.__parser = ParserPython(Grammar.duration, debug=False)
+            __class__.__parser = ParserPython(DurationGrammar.duration, debug=False)
             __class__.__evaluater = EvaluateDuration(debug=False)
         try:
             return visit_parse_tree(__class__.__parser.parse(data.lower()), __class__.__evaluater)
@@ -29,22 +29,22 @@ class UFOParser:
             return None
 
 
-class Grammar:
+class DurationGrammar:
 
-    """ This class defines the grammar of the duration texts. """
+    """ This class defines the DurationGrammar of the duration texts. """
 
     def number_with_number(): return _('[0-9]*\.?[0-9]*')
-    def number_with_letter(): return list(UFOParser.numbers_with_letter.keys())
-    def number(): return [Grammar.number_with_number, Grammar.number_with_letter]
+    def number_with_letter(): return list(DurationParser.numbers_with_letter.keys())
+    def number(): return [DurationGrammar.number_with_number, DurationGrammar.number_with_letter]
     def interval_separator(): return ['-', 'to', 'or']
-    def interval(): return Grammar.number, Optional(Grammar.interval_separator, Grammar.number)
+    def interval(): return DurationGrammar.number, Optional(DurationGrammar.interval_separator, DurationGrammar.number)
     def second(): return _('seconds|second|sec|s')
     def minute(): return _('minutes|minute|min|m')
     def hour(): return _('hours|hour|h')
-    def appx_mark(): return UFOParser.approximation_marks
-    def free_appx(): return list(UFOParser.free_approximations.keys())
-    def exact_duration(): return Optional(Grammar.appx_mark), Grammar.interval, [Grammar.hour, Grammar.minute, Grammar.second]
-    def duration(): return [Grammar.exact_duration, Grammar.free_appx]
+    def appx_mark(): return DurationParser.approximation_marks
+    def free_appx(): return list(DurationParser.free_approximations.keys())
+    def exact_duration(): return Optional(DurationGrammar.appx_mark), DurationGrammar.interval, [DurationGrammar.hour, DurationGrammar.minute, DurationGrammar.second]
+    def duration(): return [DurationGrammar.exact_duration, DurationGrammar.free_appx]
 
 
 class EvaluateDuration(PTNodeVisitor):
@@ -52,7 +52,7 @@ class EvaluateDuration(PTNodeVisitor):
     """ This class defines how to evaluate an already parsed (checked) strgin. """
 
     def visit_number_with_number(self, node, children): return float(node.value)
-    def visit_number_with_letter(self, node, children): return UFOParser.numbers_with_letter[node.value]
+    def visit_number_with_letter(self, node, children): return DurationParser.numbers_with_letter[node.value]
     def visit_number(self, node, children): return children[0]
     def visit_interval(self, node, children): return (children[0],) if len(children) == 1 else (children[0], children[2])
     def visit_second(self, node, children): return 's'
@@ -70,27 +70,27 @@ class EvaluateDuration(PTNodeVisitor):
             return timedelta(minutes=avg)
         else:
             return timedelta(hours=avg)
-    def visit_free_appx(self, node, children): return timedelta(seconds=UFOParser.free_approximations[node.value])
+    def visit_free_appx(self, node, children): return timedelta(seconds=DurationParser.free_approximations[node.value])
 
 
 if __name__ == "__main__":
     # Demo...
     test = ['10 seconds', '2-3 minutes', 'about four to six hours', '~17 seconds', 'hours']
     for d in test:
-        print(d, '->', UFOParser.parse_duration(d))
+        print(d, '->', DurationParser.parse_duration(d))
 
 """
 
 import json
 import operator
 from collections import Counter
-from duration_parser import UFOParser
+from duration_parser import DurationParser
 
 with open('data.json', 'r') as file:
     data = json.load(file)
     durations = list(data['Duration'].values())
 
-bad_durations = [x for x in durations if x is not None and UFOParser.parse_duration(x) is None]
+bad_durations = [x for x in durations if x is not None and DurationParser.parse_duration(x) is None]
 counts = Counter(bad_durations)
 sorted(dict(counts).items(), key=operator.itemgetter(1), reverse=True)[:100]
 
