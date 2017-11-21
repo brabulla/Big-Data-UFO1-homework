@@ -119,6 +119,13 @@ class LocationFinder:
             self.__lookup_cache[city] = self.download_geodata(city)
         return self.__lookup_cache[city]
     
+    def get_geodata_http_used(self,city):
+        http_used = False
+        if city not in self.__lookup_cache:
+            http_used = True
+            self.__lookup_cache[city] = self.download_geodata(city)
+        return self.__lookup_cache[city],http_used    
+
     def __match_usa_state(self, result, state_code):
         for (address, lon, lat) in result:
             if address['country_code'].lower() == 'us':
@@ -136,24 +143,37 @@ class LocationFinder:
             if address['country_code'].lower() == 'us':
                 return (lon, lat)
     
-    def find(self, city, state_code):
-        result = self.get_geodata(city)
+    def find(self, city, state_code,http_used =False):
+        result = None
+        is_http_used = False
+        if http_used:
+            result,is_http_used = self.get_geodata_http_used(city)
+        else:
+            result = self.get_geodata(city)
+
         # check for state in the usa
         candidate = self.__match_usa_state(result, state_code)
         if candidate is not None:
-            return {'longitude': candidate[0], 'latitude': candidate[1], 'confidence': 3}
+            ret = {'longitude': candidate[0], 'latitude': candidate[1], 'confidence': 3}
+            return (ret,is_http_used) if http_used else ret
+
         # check against state somewhere
         candidate = self.__match_country_code(result, state_code)
         if candidate is not None:
-            return {'longitude': candidate[0], 'latitude': candidate[1], 'confidence': 2}
+            ret = {'longitude': candidate[0], 'latitude': candidate[1], 'confidence': 2}
+            return (ret,is_http_used) if http_used else ret
+
         # check against city in usa
         candidate = self.__match_usa(result)
         if candidate is not None:
-            return {'longitude': candidate[0], 'latitude': candidate[1], 'confidence': 1}
+            ret = {'longitude': candidate[0], 'latitude': candidate[1], 'confidence': 1}
+            return (ret,is_http_used) if http_used else ret
+
         if len(result) > 0:
-            return {'longitude': result[0][1], 'latitude': result[0][2], 'confidence': 0}
+            ret = {'longitude': result[0][1], 'latitude': result[0][2], 'confidence': 0}
+            return (ret,is_http_used) if http_used else ret
         else:
-            return self.missing
+            return return (self.missing,is_http_used) if http_used else ret
 
     def __chk_word(self, word):
         if word is None:
@@ -170,13 +190,13 @@ class LocationFinder:
         if bracket != -1:
             return word[:bracket].rstrip(), word[bracket + 1:].lstrip()
 
-    def find_ugly(self, city, state_code):
+    def find_ugly(self, city, state_code,http_used = False):
         if self.__chk_word(city):
-            return self.find(city, state_code)
+            return self.find(city, state_code,http_used)
         
         city_slice = self.__remove_brackets(city)
         if self.__chk_word(city_slice):
-            return self.find(city_slice, state_code)
+            return self.find(city_slice, state_code,http_used)
 
         if city_slice is not None:
             city_slice = self.__remove_div(city_slice)
@@ -186,10 +206,11 @@ class LocationFinder:
         if city_slice is not None:
             result_1 = None
             if self.__chk_word(city_slice[0]):
-                result_1 = self.find(city_slice[0], state_code)
+                result_1 = self.find(city_slice[0], state_code,http_used)
             if self.__chk_word(city_slice[1]):
-                result_2 = self.find(city_slice[1], state_code)
+                result_2 = self.find(city_slice[1], state_code,http_used)
                 return result_1 if result_1['confidence'] > result_2['confidence'] else result_2
             if result_1 is not None:
                 return result_1
-        return self.missing
+        return (self.missing,False) if http_used else self.missing
+
