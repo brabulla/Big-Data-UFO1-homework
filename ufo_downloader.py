@@ -104,6 +104,7 @@ class LocationFinder:
     def save_cache(self, filename='location_cache.json'):
         with open(filename, 'w') as outfile:
             json.dump(self.__lookup_cache, outfile)
+        print("Location cache size:" + str(len(self.__lookup_cache)))
 
     @property
     def missing(self):
@@ -111,7 +112,10 @@ class LocationFinder:
     
     def download_geodata(self, query):
         url = 'http://nominatim.openstreetmap.org/search/'
-        response = requests.get(url + query, params={'addressdetails': 1, 'format': 'json', 'limit': 10}).json()
+        try:
+        	response = requests.get(url + query,params={'addressdetails': 1, 'format': 'json', 'limit': 10}).json()
+        except json.JSONDecodeError as e:
+        	print(e)
         return [(d['address'], d['lon'], d['lat']) for d in response if d['type'] == 'city']
 
     def get_geodata(self, city):
@@ -173,12 +177,12 @@ class LocationFinder:
             ret = {'longitude': result[0][1], 'latitude': result[0][2], 'confidence': 0}
             return (ret,is_http_used) if http_used else ret
         else:
-            return return (self.missing,is_http_used) if http_used else ret
+            return (self.missing,is_http_used) if http_used else ret
 
     def __chk_word(self, word):
         if word is None:
             return False
-        return re.match("^[a-zA-Z0-9-. ]*$", word) is not None and len(word.rstrip()) > 1
+        return re.match("^[a-zA-Z0-9-.,' ]*$", word) is not None and len(word.rstrip()) > 1
     
     def __remove_brackets(self, word):
         bracket = word.find('(')
@@ -191,6 +195,7 @@ class LocationFinder:
             return word[:bracket].rstrip(), word[bracket + 1:].lstrip()
 
     def find_ugly(self, city, state_code,http_used = False):
+    	""" If called with http_used True, returns a tuple of (geodata_dict,boolean). If called with False, returns simply the geodata_dict"""
         if self.__chk_word(city):
             return self.find(city, state_code,http_used)
         
@@ -206,11 +211,14 @@ class LocationFinder:
         if city_slice is not None:
             result_1 = None
             if self.__chk_word(city_slice[0]):
-                result_1 = self.find(city_slice[0], state_code,http_used)
+                result_1,is_http_used = self.find(city_slice[0], state_code,http_used)
             if self.__chk_word(city_slice[1]):
-                result_2 = self.find(city_slice[1], state_code,http_used)
-                return result_1 if result_1['confidence'] > result_2['confidence'] else result_2
+                result_2, is_http_used = self.find(city_slice[1], state_code,http_used)
+                if result_1 is None or result_2 is None:
+                	print(city)
+                ret = result_1 if result_1 is not None and result_1['confidence'] > result_2['confidence'] else result_2
+                return (ret,is_http_used) if http_used else ret
             if result_1 is not None:
-                return result_1
+                return (result_1,is_http_used) if http_used else result_1
         return (self.missing,False) if http_used else self.missing
 
