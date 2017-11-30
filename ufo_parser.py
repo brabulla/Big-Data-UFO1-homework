@@ -77,7 +77,7 @@ if __name__ == "__main__":
     # Demo...
     test = ['10 seconds', '2-3 minutes', 'about four to six hours', '~17 seconds', 'hours']
     for d in test:
-        print(d, '->', DurationParser.parse_duration(d))
+        print(d, '->', DurationParser.parse_duration(d),type(DurationParser.parse_duration(d)))
 
 """
 
