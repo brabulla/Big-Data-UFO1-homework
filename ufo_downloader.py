@@ -126,13 +126,13 @@ class LocationFinder:
 
     def get_geodata(self, city):
         if city not in self.__lookup_cache:
-
             now = time.time()
+
             if self.__last_http_request + self.http_sleep > now:  # we have to wait...
                 time.sleep(self.__last_http_request + self.http_sleep - now)
-            self.__last_http_request = now
 
             self.__lookup_cache[city] = self.download_geodata(city)
+            self.__last_http_request = time.time()
         return self.__lookup_cache[city]
     
     def __match_usa_state(self, result, state_code):
