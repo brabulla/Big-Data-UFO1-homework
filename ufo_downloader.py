@@ -130,7 +130,7 @@ class LocationFinder:
             now = time.time()
             if self.__last_http_request + self.http_sleep > now:  # we have to wait...
                 time.sleep(self.__last_http_request + self.http_sleep - now)
-                self.__last_http_request = now
+            self.__last_http_request = now
 
             self.__lookup_cache[city] = self.download_geodata(city)
         return self.__lookup_cache[city]
