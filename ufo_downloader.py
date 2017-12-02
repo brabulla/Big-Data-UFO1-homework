@@ -116,7 +116,7 @@ class LocationFinder:
 
     @property
     def missing(self):
-        return {'longitude': None, 'latitude': None, 'confidence': -1}
+        return {'confidence': -1}
     
     def download_geodata(self, query):
         url = 'http://nominatim.openstreetmap.org/search/'
@@ -192,11 +192,11 @@ class LocationFinder:
 
     def find_ugly(self, city, state_code):
         if self.__chk_word(city):
-            return self.find(city, state_code)
+            return city, self.find(city, state_code)
         
         city_slice = self.__remove_brackets(city)
         if self.__chk_word(city_slice):
-            return self.find(city_slice, state_code)
+            return city_slice, self.find(city_slice, state_code)
 
         if city_slice is not None:
             city_slice = self.__remove_div(city_slice)
@@ -209,7 +209,7 @@ class LocationFinder:
                 result_1 = self.find(city_slice[0], state_code)
             if self.__chk_word(city_slice[1]):
                 result_2 = self.find(city_slice[1], state_code)
-                return result_1 if result_1['confidence'] > result_2['confidence'] else result_2
+                return (city_slice[0], result_1) if result_1['confidence'] > result_2['confidence'] else (city_slice[1], result_2)
             if result_1 is not None:
-                return result_1
-        return self.missing
+                return city_slice[0], result_1
+        raise ValueError('Can not find city: ' + city)
