@@ -154,25 +154,29 @@ class LocationFinder:
     
     def find(self, city, state_code):
         result = self.__offline_lookup[np.logical_and(self.__offline_lookup.city == city, self.__offline_lookup.state_id == state_code)]
-        if len(result) == 1:  #it is never Null!
-            return {'longitude': float(result.lng), 'latitude': float(result.lat), 'confidence': 3}
+        # Catch any exception belongs to wrong data input, but NOT catch anything about lost connection!
+        try:
+            if len(result) == 1:  #it is never Null!
+                return {'longitude': float(result.lng), 'latitude': float(result.lat), 'confidence': 3}
 
-        result = self.get_geodata(city)
-        # check for state in the usa
-        candidate = self.__match_usa_state(result, state_code)
-        if candidate is not None:
-            return {'longitude': candidate[0], 'latitude': candidate[1], 'confidence': 3}
-        # check against state somewhere
-        candidate = self.__match_country_code(result, state_code)
-        if candidate is not None:
-            return {'longitude': candidate[0], 'latitude': candidate[1], 'confidence': 2}
-        # check against city in usa
-        candidate = self.__match_usa(result)
-        if candidate is not None:
-            return {'longitude': candidate[0], 'latitude': candidate[1], 'confidence': 1}
-        if len(result) > 0:
-            return {'longitude': result[0][1], 'latitude': result[0][2], 'confidence': 0}
-        else:
+            result = self.get_geodata(city)
+            # check for state in the usa
+            candidate = self.__match_usa_state(result, state_code)
+            if candidate is not None:
+                return {'longitude': candidate[0], 'latitude': candidate[1], 'confidence': 3}
+            # check against state somewhere
+            candidate = self.__match_country_code(result, state_code)
+            if candidate is not None:
+                return {'longitude': candidate[0], 'latitude': candidate[1], 'confidence': 2}
+            # check against city in usa
+            candidate = self.__match_usa(result)
+            if candidate is not None:
+                return {'longitude': candidate[0], 'latitude': candidate[1], 'confidence': 1}
+            if len(result) > 0:
+                return {'longitude': result[0][1], 'latitude': result[0][2], 'confidence': 0}
+            else:
+                return self.missing
+        except Exception as e:
             return self.missing
 
     def __chk_word(self, word):
