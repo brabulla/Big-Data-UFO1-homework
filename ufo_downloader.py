@@ -102,7 +102,8 @@ class LocationFinder:
     http_sleep = 0.7
     __last_http_request = 0
 
-    def __init__(self, cachefile=None, offlineFile=None):
+    def __init__(self, cachefile=None, offlineFile=None, use_http = True):
+        self.use_http = use_http
         if cachefile is not None:
             with open(cachefile, 'r') as file:
                 self.__lookup_cache = json.load(file)
@@ -158,7 +159,8 @@ class LocationFinder:
         try:
             if len(result) == 1:  #it is never Null!
                 return {'longitude': float(result.lng), 'latitude': float(result.lat), 'confidence': 3}
-
+            if not self.use_http:
+                return self.missing
             result = self.get_geodata(city)
             # check for state in the usa
             candidate = self.__match_usa_state(result, state_code)
@@ -216,4 +218,5 @@ class LocationFinder:
                 return (city_slice[0], result_1) if result_1['confidence'] > result_2['confidence'] else (city_slice[1], result_2)
             if result_1 is not None:
                 return city_slice[0], result_1
+        return city_slice,self.missing
         raise ValueError('Can not find city: ' + city)
